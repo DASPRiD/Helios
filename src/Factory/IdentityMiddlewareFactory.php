@@ -4,13 +4,13 @@ declare(strict_types=1);
 namespace DASPRiD\Helios\Factory;
 
 use Assert\Assertion;
-use DASPRiD\Helios\CookieManager;
+use DASPRiD\Helios\CookieManagerInterface;
 use DASPRiD\Helios\IdentityMiddleware;
 use Interop\Container\ContainerInterface;
 
 final class IdentityMiddlewareFactory
 {
-    public function __invoke(ContainerInterface $container) : CookieManager
+    public function __invoke(ContainerInterface $container) : IdentityMiddleware
     {
         $config = $container->get('config');
         Assertion::keyIsset($config, 'helios');
@@ -22,8 +22,8 @@ final class IdentityMiddlewareFactory
         Assertion::keyExists($middlewareConfig, 'refresh_time');
 
         return new IdentityMiddleware(
-            $middlewareConfig['identity_lookup_service_name'],
-            $config->get(CookieManager::class),
+            $container->get($middlewareConfig['identity_lookup_service_name']),
+            $container->get(CookieManagerInterface::class),
             $middlewareConfig['refresh_time']
         );
     }

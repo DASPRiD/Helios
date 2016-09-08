@@ -4,13 +4,12 @@ declare(strict_types=1);
 namespace DASPRiD\Helios\Factory;
 
 use Assert\Assertion;
-use DASPRiD\Helios\CookieManager;
 use DASPRiD\Helios\TokenManager;
 use Interop\Container\ContainerInterface;
 
 final class TokenManagerFactory
 {
-    public function __invoke(ContainerInterface $container) : CookieManager
+    public function __invoke(ContainerInterface $container) : TokenManager
     {
         $config = $container->get('config');
         Assertion::keyIsset($config, 'helios');

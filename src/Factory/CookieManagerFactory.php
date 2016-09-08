@@ -5,7 +5,7 @@ namespace DASPRiD\Helios\Factory;
 
 use Assert\Assertion;
 use DASPRiD\Helios\CookieManager;
-use DASPRiD\Helios\TokenManager;
+use DASPRiD\Helios\TokenManagerInterface;
 use Interop\Container\ContainerInterface;
 
 final class CookieManagerFactory
@@ -26,7 +26,7 @@ final class CookieManagerFactory
             $cookieConfig['name'],
             $cookieConfig['secure'],
             $cookieConfig['lifetime'],
-            $container->get(TokenManager::class)
+            $container->get(TokenManagerInterface::class)
         );
     }
 }

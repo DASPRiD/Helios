@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace DASPRiD\Helios;
 
+use DASPRiD\Helios\Factory\CookieManagerFactory;
+use DASPRiD\Helios\Factory\IdentityMiddlewareFactory;
+use DASPRiD\Helios\Factory\TokenManagerFactory;
+
 final class ConfigProvider
 {
     public function __invoke() : array
@@ -16,9 +20,9 @@ final class ConfigProvider
     {
         return [
             'factories' => [
-                CookieManager::class => Factory\CookieManagerFactory::class,
-                IdentityMiddleware::class => Factory\IdentityMiddlewareFactory::class,
-                TokenManager::class => Factory\TokenManagerFactory::class,
+                CookieManagerInterface::class => CookieManagerFactory::class,
+                IdentityMiddleware::class => IdentityMiddlewareFactory::class,
+                TokenManagerInterface::class => TokenManagerFactory::class,
             ],
         ];
     }

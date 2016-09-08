@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace DASPRiD\HeliosTest;
 
 use DASPRiD\Helios\ConfigProvider;
-use DASPRiD\Helios\CookieManager;
+use DASPRiD\Helios\CookieManagerInterface;
 use DASPRiD\Helios\IdentityMiddleware;
-use DASPRiD\Helios\TokenManager;
+use DASPRiD\Helios\TokenManagerInterface;
 use PHPUnit_Framework_TestCase as TestCase;
 
 class ConfigProviderTest extends TestCase
@@ -22,8 +22,8 @@ class ConfigProviderTest extends TestCase
     {
         $dependencyConfig = (new ConfigProvider())->getDependencyConfig();
         $this->assertArrayHasKey('factories', $dependencyConfig);
-        $this->assertArrayHasKey(CookieManager::class, $dependencyConfig['factories']);
+        $this->assertArrayHasKey(CookieManagerInterface::class, $dependencyConfig['factories']);
         $this->assertArrayHasKey(IdentityMiddleware::class, $dependencyConfig['factories']);
-        $this->assertArrayHasKey(TokenManager::class, $dependencyConfig['factories']);
+        $this->assertArrayHasKey(TokenManagerInterface::class, $dependencyConfig['factories']);
     }
 }
