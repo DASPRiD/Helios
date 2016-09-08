@@ -10,7 +10,6 @@ use DASPRiD\Helios\Exception\InvalidTokenException;
 use Dflydev\FigCookies\FigResponseCookies;
 use Dflydev\FigCookies\SetCookie;
 use Lcobucci\JWT\Token;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
