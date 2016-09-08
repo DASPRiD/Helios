@@ -21,7 +21,7 @@ $ composer require dasprid/helios
 
 ## Getting started (for [Expressive](https://github.com/zendframework/zend-expressive))
 
-# Import the factory config
+### Import the factory config
 
 Create a file named `helios.global.php` or similar in your autoloading config directory:
 
@@ -36,7 +36,7 @@ This will introduce a few factories, namely you can retrieve the following objec
 - `DASPRiD\Helios\IdentityMiddleware` through `DASPRiD\Helios\IdentityMiddleware`
 - `DASPRiD\Helios\TokenManager` through `DASPRiD\Helios\TokenManagerInterface`
 
-# Create an identity lookup
+### Create an identity lookup
 
 You'll need to implement a lookup which retrieves the user identity based on the subject stored in the token. Register
 that lookup in your dependency container:
@@ -57,17 +57,17 @@ class MyIdentityLookup implements DASPRiD\Helios\Identity\IdentityLookupInterfac
 }
 ```
 
-# Configure Helios
+### Configure Helios
 
 For Helios to function, it needs a few configuration variables. Copy the file `doc/example-config.php` and adjust the
 values as needed.
 
-# Register the identity middleware
+### Register the identity middleware
 
 Helios ships with an `IdentityMiddleware`, which should be registered in your middleware pipeline before the dispatch
 middleware. The exact location in the stack depends on your own needs.
 
-# Write your sign-in middleware
+### Write your sign-in middleware
 
 Helios itself does not ship with any actual logic for signing users in or out. Thus, a simple sign-in middleware may
 look like this:
@@ -99,7 +99,7 @@ class MySignIn
 }
 ```
 
-# Write your sign-out middleware
+### Write your sign-out middleware
 
 Similar to the sign-in middleware, your sign-out middleware can use the `CookieManager` to invalidate the cookie:
 
@@ -120,7 +120,7 @@ class MySignOut
 }
 ```
 
-# Retrieve the user identity in a middleware
+### Retrieve the user identity in a middleware
 
 Each time the user is retrieved by the `IdentityMiddleware`, it is injected into the request as an attribute. Thus when
 you need the user in your middleware, you can easily get it:
