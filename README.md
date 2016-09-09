@@ -115,7 +115,7 @@ class MySignOut
     public function __invoke()
     {
         $response = new Zend\Diactoros\Response\RedirectResponse('/go/somewhere');
-        return $this->cookieManager->expireTokenCookuie($response);
+        return $this->cookieManager->expireTokenCookie($response);
     }
 }
 ```
