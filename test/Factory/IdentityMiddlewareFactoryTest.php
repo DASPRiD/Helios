@@ -17,7 +17,7 @@ class IdentityMiddlewareFactoryTest extends TestCase
         $container->get('config')->willReturn([
             'helios' => [
                 'middleware' => [
-                    'identity_lookup_service_name' => 'foo',
+                    'identity_lookup_id' => 'foo',
                     'refresh_time' => 100,
                 ],
             ],

@@ -18,11 +18,11 @@ final class IdentityMiddlewareFactory
         Assertion::isArrayAccessible($config['helios']['middleware']);
 
         $middlewareConfig = $config['helios']['middleware'];
-        Assertion::keyExists($middlewareConfig, 'identity_lookup_service_name');
+        Assertion::keyExists($middlewareConfig, 'identity_lookup_id');
         Assertion::keyExists($middlewareConfig, 'refresh_time');
 
         return new IdentityMiddleware(
-            $container->get($middlewareConfig['identity_lookup_service_name']),
+            $container->get($middlewareConfig['identity_lookup_id']),
             $container->get(CookieManagerInterface::class),
             $middlewareConfig['refresh_time']
         );
