@@ -63,11 +63,8 @@ final class CookieManager implements CookieManagerInterface
         $setCookie = SetCookie::create($this->cookieName)
             ->withHttpOnly(true)
             ->withPath('/')
-            ->withExpires($endAtSession ? null : $currentTimestamp + $this->lifetime);
-
-        if ($this->secure) {
-            $setCookie = $setCookie->withSecure(true);
-        }
+            ->withExpires($endAtSession ? null : $currentTimestamp + $this->lifetime)
+            ->withSecure($this->secure);
 
         return FigResponseCookies::set(
             $response,
@@ -77,14 +74,14 @@ final class CookieManager implements CookieManagerInterface
 
     public function expireTokenCookie(ResponseInterface $response) : ResponseInterface
     {
-        return FigResponseCookies::set(
-            $response,
-            SetCookie::create($this->cookieName)
-                ->withHttpOnly(true)
-                ->withPath('/')
-                ->withExpires(0)
-                ->withValue(null)
-        );
+        $setCookie = SetCookie::create($this->cookieName)
+            ->withHttpOnly(true)
+            ->withPath('/')
+            ->withExpires(1)
+            ->withSecure($this->secure)
+            ->withValue('');
+
+        return FigResponseCookies::set($response, $setCookie);
     }
 
     public function hasValidToken(ServerRequestInterface $request) : bool

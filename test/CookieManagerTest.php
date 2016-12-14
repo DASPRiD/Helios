@@ -52,19 +52,27 @@ class CookieManagerTest extends TestCase
         ], $newResponse->getHeader('Set-Cookie'));
     }
 
-    public function testExpireTokenCookie()
+    public function testSecureExpireTokenCookie()
     {
         $cookieManager = $this->createCookieManager($this->prophesize(TokenManagerInterface::class)->reveal());
 
         $originalResponse = new EmptyResponse();
-        $newResponse = $cookieManager->expireTokenCookie(
-            $originalResponse,
-            'foo',
-            false
-        );
+        $newResponse = $cookieManager->expireTokenCookie($originalResponse);
 
         $this->assertSame([
-            'helios=; Path=/; HttpOnly',
+            'helios=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; Secure; HttpOnly',
+        ], $newResponse->getHeader('Set-Cookie'));
+    }
+
+    public function testNonSecureExpireTokenCookie()
+    {
+        $cookieManager = $this->createCookieManager($this->prophesize(TokenManagerInterface::class)->reveal(), false);
+
+        $originalResponse = new EmptyResponse();
+        $newResponse = $cookieManager->expireTokenCookie($originalResponse);
+
+        $this->assertSame([
+            'helios=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; HttpOnly',
         ], $newResponse->getHeader('Set-Cookie'));
     }
 
