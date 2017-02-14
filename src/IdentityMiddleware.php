@@ -77,6 +77,7 @@ final class IdentityMiddleware
         return $this->cookieManager->injectTokenCookie(
             $nextResponse,
             $subject,
+            false,
             false
         );
     }

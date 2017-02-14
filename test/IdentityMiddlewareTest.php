@@ -185,7 +185,7 @@ class IdentityMiddlewareTest extends TestCase
         ] + $claims));
 
         if ($expectRefresh) {
-            $cookieManager->injectTokenCookie($response, 'foo', false)->shouldBeCalled();
+            $cookieManager->injectTokenCookie($response, 'foo', false, false)->shouldBeCalled();
         } else {
             $cookieManager->injectTokenCookie()->shouldNotBeCalled();
         }

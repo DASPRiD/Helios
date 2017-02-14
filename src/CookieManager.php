@@ -7,6 +7,7 @@ use DASPRiD\Helios\CurrentTime\CurrentTimeProviderInterface;
 use DASPRiD\Helios\CurrentTime\SystemTimeProvider;
 use DASPRiD\Helios\Exception\CookieNotFoundException;
 use DASPRiD\Helios\Exception\InvalidTokenException;
+use Dflydev\FigCookies\FigRequestCookies;
 use Dflydev\FigCookies\FigResponseCookies;
 use Dflydev\FigCookies\SetCookie;
 use Lcobucci\JWT\Token;
@@ -54,11 +55,16 @@ final class CookieManager implements CookieManagerInterface
         $this->currentTimeProvider = $currentTimeProvider ?: new SystemTimeProvider();
     }
 
-    /**
-     * @param mixed $subject
-     */
-    public function injectTokenCookie(ResponseInterface $response, $subject, bool $endAtSession) : ResponseInterface
-    {
+    public function injectTokenCookie(
+        ResponseInterface $response,
+        $subject,
+        bool $endAtSession,
+        bool $overwriteExpireCookie = true
+    ) : ResponseInterface {
+        if (!$overwriteExpireCookie && '' === FigResponseCookies::get($response, $this->cookieName)->getValue()) {
+            return $response;
+        }
+
         $currentTimestamp = $this->currentTimeProvider->getCurrentTime()->getTimestamp();
         $setCookie = SetCookie::create($this->cookieName)
             ->withHttpOnly(true)
@@ -86,14 +92,15 @@ final class CookieManager implements CookieManagerInterface
 
     public function hasValidToken(ServerRequestInterface $request) : bool
     {
-        $cookies = $request->getCookieParams();
+        $requestCookie = FigRequestCookies::get($request, $this->cookieName);
+        $cookieValue = $requestCookie->getValue();
 
-        if (!array_key_exists($this->cookieName, $cookies)) {
+        if (null === $cookieValue) {
             return false;
         }
 
         try {
-            $this->tokenManager->parseSignedToken($cookies[$this->cookieName]);
+            $this->tokenManager->parseSignedToken($cookieValue);
         } catch (InvalidTokenException $e) {
             return false;
         }
@@ -103,12 +110,13 @@ final class CookieManager implements CookieManagerInterface
 
     public function getToken(ServerRequestInterface $request) : Token
     {
-        $cookies = $request->getCookieParams();
+        $requestCookie = FigRequestCookies::get($request, $this->cookieName);
+        $cookieValue = $requestCookie->getValue();
 
-        if (!array_key_exists($this->cookieName, $cookies)) {
+        if (null === $cookieValue) {
             throw CookieNotFoundException::fromNonExistentCookie($this->cookieName);
         }
 
-        return $this->tokenManager->parseSignedToken($cookies[$this->cookieName]);
+        return $this->tokenManager->parseSignedToken($cookieValue);
     }
 }

@@ -9,10 +9,12 @@ use Psr\Http\Message\ServerRequestInterface;
 
 interface CookieManagerInterface
 {
-    /**
-     * @param mixed $subject
-     */
-    public function injectTokenCookie(ResponseInterface $response, $subject, bool $endAtSession) : ResponseInterface;
+    public function injectTokenCookie(
+        ResponseInterface $response,
+        $subject,
+        bool $endAtSession,
+        bool $overwriteExpireCookie = true
+    ) : ResponseInterface;
 
     public function expireTokenCookie(ResponseInterface $response) : ResponseInterface;
 

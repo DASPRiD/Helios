@@ -52,6 +52,45 @@ class CookieManagerTest extends TestCase
         ], $newResponse->getHeader('Set-Cookie'));
     }
 
+    public function testInjectTookenCookieExpiringEndOfSession()
+    {
+        $tokenManager = $this->prophesize(TokenManagerInterface::class);
+        $tokenManager->getSignedToken('foo', 100, true)->willReturn(new Token());
+        $cookieManager = $this->createCookieManager($tokenManager->reveal(), false);
+
+        $originalResponse = new EmptyResponse();
+        $newResponse = $cookieManager->injectTokenCookie(
+            $originalResponse,
+            'foo',
+            true
+        );
+
+        $this->assertSame([
+            'helios=..; Path=/; HttpOnly',
+        ], $newResponse->getHeader('Set-Cookie'));
+    }
+
+    public function testExpireCookieIsNotOverwrittenWithSetFlag()
+    {
+        $tokenManager = $this->prophesize(TokenManagerInterface::class);
+        $tokenManager->getSignedToken('foo', 100, false)->willReturn(new Token());
+        $cookieManager = $this->createCookieManager($tokenManager->reveal(), false);
+
+        $originalResponse = new EmptyResponse();
+        $expireResponse = $cookieManager->expireTokenCookie($originalResponse);
+
+        $newResponse = $cookieManager->injectTokenCookie(
+            $expireResponse,
+            'foo',
+            false,
+            false
+        );
+
+        $this->assertSame([
+            'helios=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; HttpOnly',
+        ], $newResponse->getHeader('Set-Cookie'));
+    }
+
     public function testSecureExpireTokenCookie()
     {
         $cookieManager = $this->createCookieManager($this->prophesize(TokenManagerInterface::class)->reveal());
@@ -83,7 +122,7 @@ class CookieManagerTest extends TestCase
         $cookieManager = $this->createCookieManager($tokenManager->reveal());
 
         $request = $this->prophesize(ServerRequestInterface::class);
-        $request->getCookieParams()->willReturn(['helios' => 'foo']);
+        $request->getHeaderLine('Cookie')->willReturn('helios=foo');
 
         $this->assertTrue($cookieManager->hasValidToken($request->reveal()));
     }
@@ -95,7 +134,7 @@ class CookieManagerTest extends TestCase
         $cookieManager = $this->createCookieManager($tokenManager->reveal());
 
         $request = $this->prophesize(ServerRequestInterface::class);
-        $request->getCookieParams()->willReturn([]);
+        $request->getHeaderLine('Cookie')->willReturn('');
 
         $this->assertFalse($cookieManager->hasValidToken($request->reveal()));
     }
@@ -107,7 +146,7 @@ class CookieManagerTest extends TestCase
         $cookieManager = $this->createCookieManager($tokenManager->reveal());
 
         $request = $this->prophesize(ServerRequestInterface::class);
-        $request->getCookieParams()->willReturn(['helios' => 'foo']);
+        $request->getHeaderLine('Cookie')->willReturn('helios=foo');
 
         $this->assertFalse($cookieManager->hasValidToken($request->reveal()));
     }
@@ -120,7 +159,7 @@ class CookieManagerTest extends TestCase
         $cookieManager = $this->createCookieManager($tokenManager->reveal());
 
         $request = $this->prophesize(ServerRequestInterface::class);
-        $request->getCookieParams()->willReturn(['helios' => 'foo']);
+        $request->getHeaderLine('Cookie')->willReturn('helios=foo');
 
         $this->assertSame($token, $cookieManager->getToken($request->reveal()));
     }
@@ -130,7 +169,7 @@ class CookieManagerTest extends TestCase
         $cookieManager = $this->createCookieManager($this->prophesize(TokenManagerInterface::class)->reveal());
 
         $request = $this->prophesize(ServerRequestInterface::class);
-        $request->getCookieParams()->willReturn([]);
+        $request->getHeaderLine('Cookie')->willReturn('');
 
         $this->expectException(CookieNotFoundException::class);
         $this->expectExceptionMessage('Cookie with name "helios" was not found');
