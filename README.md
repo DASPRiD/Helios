@@ -87,7 +87,7 @@ class MySignIn
 
         if ($userIsValid) {
             $response = new Zend\Diactoros\Response\RedirectResponse('/go/somewhere');
-            return $this->cookieManager->injectTokenCookuie(
+            return $this->cookieManager->injectTokenCookie(
                 $response,
                 $user->getId(),
                 !$rememberMeSelected
