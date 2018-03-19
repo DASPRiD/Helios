@@ -10,8 +10,10 @@ use DASPRiD\Pikkuleipa\Cookie;
 use DateTimeZone;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
-final class IdentityMiddleware
+final class IdentityMiddleware implements MiddlewareInterface
 {
     public const IDENTITY_ATTRIBUTE = 'helios-identity';
 
@@ -47,25 +49,22 @@ final class IdentityMiddleware
         $this->clock = $clock ?: new SystemClock(new DateTimeZone('utc'));
     }
 
-    public function __invoke(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        callable $next
-    ) : ResponseInterface {
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler) : ResponseInterface
+    {
         $cookie = $this->identityCookieManager->getCookie($request);
         $subject = $cookie->get(IdentityCookieManager::SUBJECT_CLAIM);
 
         if (null === $subject) {
-            return $next($request, $response);
+            return $handler->handle($request);
         }
 
         $result = $this->identityLookup->lookup($subject);
 
         if (! $result->hasIdentity()) {
-            return $next($request, $response);
+            return $handler->handle($request);
         }
 
-        $nextResponse = $next($request->withAttribute(self::IDENTITY_ATTRIBUTE, $result->getIdentity()), $response);
+        $nextResponse = $handler->handle($request->withAttribute(self::IDENTITY_ATTRIBUTE, $result->getIdentity()));
 
         if (! $this->shouldCookieBeRefreshed($cookie)) {
             return $nextResponse;

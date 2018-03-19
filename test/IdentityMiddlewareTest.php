@@ -15,6 +15,8 @@ use PHPUnit\Framework\TestCase;
 use Prophecy\Argument;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Zend\Diactoros\Response;
 use Zend\Diactoros\Response\EmptyResponse;
 use Zend\Diactoros\ServerRequest;
 
@@ -23,7 +25,7 @@ class IdentityMiddlewareTest extends TestCase
     public function testInvokeWithoutValidToken() : void
     {
         $request = new ServerRequest();
-        $response = new EmptyResponse();
+        $expectedResponse = new EmptyResponse();
         $cookie = new Cookie('helios');
 
         $cookieManager = $this->prophesize(CookieManagerInterface::class);
@@ -36,16 +38,22 @@ class IdentityMiddlewareTest extends TestCase
             30
         );
 
-        $middleware($request, $response, function (ServerRequestInterface $request, ResponseInterface $response) {
+        $handler = $this->prophesize(RequestHandlerInterface::class);
+        $handler->handle(Argument::that(function (ServerRequestInterface $request) : bool {
             $this->assertNull($request->getAttribute(IdentityMiddleware::IDENTITY_ATTRIBUTE));
-            return $response;
-        });
+            return true;
+        }))->willReturn($expectedResponse);
+
+        $this->assertSame(
+            $expectedResponse,
+            $middleware->process($request, $handler->reveal())
+        );
     }
 
     public function testInvokeWithInvalidIdentity() : void
     {
         $request = new ServerRequest();
-        $response = new EmptyResponse();
+        $expectedResponse = new EmptyResponse();
         $cookie = new Cookie('helios');
         $cookie->set(IdentityCookieManager::SUBJECT_CLAIM, 'foo');
 
@@ -62,16 +70,22 @@ class IdentityMiddlewareTest extends TestCase
             30
         );
 
-        $middleware($request, $response, function (ServerRequestInterface $request, ResponseInterface $response) {
+        $handler = $this->prophesize(RequestHandlerInterface::class);
+        $handler->handle(Argument::that(function (ServerRequestInterface $request) : bool {
             $this->assertNull($request->getAttribute(IdentityMiddleware::IDENTITY_ATTRIBUTE));
-            return $response;
-        });
+            return true;
+        }))->willReturn($expectedResponse);
+
+        $this->assertSame(
+            $expectedResponse,
+            $middleware->process($request, $handler->reveal())
+        );
     }
 
     public function testInvokeWithValidIdentity() : void
     {
         $request = new ServerRequest();
-        $response = new EmptyResponse();
+        $expectedResponse = new EmptyResponse();
         $cookie = new Cookie('helios');
         $cookie->set(IdentityCookieManager::SUBJECT_CLAIM, 'foo');
 
@@ -88,10 +102,16 @@ class IdentityMiddlewareTest extends TestCase
             30
         );
 
-        $middleware($request, $response, function (ServerRequestInterface $request, ResponseInterface $response) {
+        $handler = $this->prophesize(RequestHandlerInterface::class);
+        $handler->handle(Argument::that(function (ServerRequestInterface $request) : bool {
             $this->assertSame('bar', $request->getAttribute(IdentityMiddleware::IDENTITY_ATTRIBUTE));
-            return $response;
-        });
+            return true;
+        }))->willReturn($expectedResponse);
+
+        $this->assertSame(
+            $expectedResponse,
+            $middleware->process($request, $handler->reveal())
+        );
     }
 
     public static function refreshProvider() : array
@@ -121,8 +141,8 @@ class IdentityMiddlewareTest extends TestCase
     public function testRefresh(DateTimeImmutable $currentTime, bool $endsAtSession, bool $shouldRefresh) : void
     {
         $request = new ServerRequest();
-        $response = new EmptyResponse();
-        $expectedResponse = $response;
+        $handlerResponse = new EmptyResponse();
+        $expectedResponse = $handlerResponse;
         $refreshResponse = new EmptyResponse();
 
         if ($shouldRefresh) {
@@ -134,7 +154,7 @@ class IdentityMiddlewareTest extends TestCase
 
         $cookieManager = $this->prophesize(CookieManagerInterface::class);
         $cookieManager->getCookie($request, 'helios')->willReturn($cookie);
-        $cookieManager->setCookie($response, Argument::that(function (Cookie $cookie) : bool {
+        $cookieManager->setCookie($handlerResponse, Argument::that(function (Cookie $cookie) : bool {
             return 'foo' === $cookie->get(IdentityCookieManager::SUBJECT_CLAIM);
         }))->willReturn($refreshResponse);
         $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
@@ -149,12 +169,15 @@ class IdentityMiddlewareTest extends TestCase
             new FrozenClock($currentTime)
         );
 
+        $handler = $this->prophesize(RequestHandlerInterface::class);
+        $handler->handle(Argument::that(function (ServerRequestInterface $request) : bool {
+            $this->assertSame('bar', $request->getAttribute(IdentityMiddleware::IDENTITY_ATTRIBUTE));
+            return true;
+        }))->willReturn($handlerResponse);
+
         $this->assertSame(
             $expectedResponse,
-            $middleware($request, $response, function (ServerRequestInterface $request, ResponseInterface $response) {
-                $this->assertSame('bar', $request->getAttribute(IdentityMiddleware::IDENTITY_ATTRIBUTE));
-                return $response;
-            })
+            $middleware->process($request, $handler->reveal())
         );
     }
 }
