@@ -11,16 +11,14 @@ cache:
 matrix:
   fast_finish: true
   include:
-    - php: 7
+    - php: 7.1
       env:
         - EXECUTE_CS_CHECK=true
         - EXECUTE_TEST_COVERALLS=true
         - PATH="$HOME/.local/bin:$PATH"
     - php: nightly
-    - php: hhvm
   allow_failures:
     - php: nightly
-    - php: hhvm
 
 before_install:
   - if [[ $EXECUTE_TEST_COVERALLS != 'true' ]]; then phpenv config-rm xdebug.ini || return 0 ; fi
