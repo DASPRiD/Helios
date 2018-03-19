@@ -1,13 +1,14 @@
 <?php
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace DASPRiD\HeliosTest\Factory;
 
-use DASPRiD\Helios\CookieManagerInterface;
 use DASPRiD\Helios\Factory\IdentityMiddlewareFactory;
 use DASPRiD\Helios\Identity\IdentityLookupInterface;
-use Interop\Container\ContainerInterface;
-use PHPUnit_Framework_TestCase as TestCase;
+use DASPRiD\Helios\IdentityCookieManager;
+use DASPRiD\Pikkuleipa\CookieManagerInterface;
+use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
 
 class IdentityMiddlewareFactoryTest extends TestCase
 {
@@ -16,14 +17,15 @@ class IdentityMiddlewareFactoryTest extends TestCase
         $container = $this->prophesize(ContainerInterface::class);
         $container->get('config')->willReturn([
             'helios' => [
-                'middleware' => [
-                    'identity_lookup_id' => 'foo',
-                    'refresh_time' => 100,
-                ],
+                'identity_lookup_id' => 'foo',
+                'refresh_time' => 100,
             ],
         ]);
-        $cookieManager = $this->prophesize(CookieManagerInterface::class)->reveal();
-        $container->get(CookieManagerInterface::class)->willReturn($cookieManager);
+        $identityCookieManager = new IdentityCookieManager(
+            $this->prophesize(CookieManagerInterface::class)->reveal(),
+            'helios'
+        );
+        $container->get(IdentityCookieManager::class)->willReturn($identityCookieManager);
         $identityLookup = $this->prophesize(IdentityLookupInterface::class)->reveal();
         $container->get('foo')->willReturn($identityLookup);
 
@@ -32,6 +34,6 @@ class IdentityMiddlewareFactoryTest extends TestCase
 
         $this->assertAttributeSame(100, 'refreshTime', $identityMiddleware);
         $this->assertAttributeSame($identityLookup, 'identityLookup', $identityMiddleware);
-        $this->assertAttributeSame($cookieManager, 'cookieManager', $identityMiddleware);
+        $this->assertAttributeSame($identityCookieManager, 'identityCookieManager', $identityMiddleware);
     }
 }

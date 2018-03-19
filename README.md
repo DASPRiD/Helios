@@ -32,9 +32,8 @@ return (new DASPRiD\Helios\ConfigProvider())->__invoke();
 
 This will introduce a few factories, namely you can retrieve the following objects through that:
 
-- `DASPRiD\Helios\CookieManager` through `DASPRiD\Helios\CookieManagerInterface`
+- `DASPRiD\Helios\IdentityCookieManager` through `DASPRiD\Helios\IdentityCookieManager`
 - `DASPRiD\Helios\IdentityMiddleware` through `DASPRiD\Helios\IdentityMiddleware`
-- `DASPRiD\Helios\TokenManager` through `DASPRiD\Helios\TokenManagerInterface`
 
 ### Create an identity lookup
 
@@ -43,7 +42,10 @@ that lookup in your dependency container:
 
 ```php
 <?php
-class MyIdentityLookup implements DASPRiD\Helios\Identity\IdentityLookupInterface
+use DASPRiD\Helios\Identity\IdentityLookupInterface;
+use DASPRiD\Helios\Identity\LookupResult;
+
+class MyIdentityLookup implements IdentityLookupInterface
 {
     public function lookup($subject) : LookupResult
     {
@@ -77,9 +79,9 @@ look like this:
 class MySignIn
 {
     /**
-     * DASPRiD\Helios\CookieManagerInterface
+     * @var \DASPRiD\Helios\IdentityCookieManager
      */
-    private $cookieManager;
+    private $identityCookieManager;
 
     public function __invoke()
     {
@@ -87,10 +89,10 @@ class MySignIn
 
         if ($userIsValid) {
             $response = new Zend\Diactoros\Response\RedirectResponse('/go/somewhere');
-            return $this->cookieManager->injectTokenCookie(
+            return $this->identityCookieManager->injectCookie(
                 $response,
                 $user->getId(),
-                !$rememberMeSelected
+                ! $rememberMeSelected
             );
         }
 
@@ -101,21 +103,22 @@ class MySignIn
 
 ### Write your sign-out middleware
 
-Similar to the sign-in middleware, your sign-out middleware can use the `CookieManager` to invalidate the cookie:
+Similar to the sign-in middleware, your sign-out middleware can use the `IdentityCookieManager` to invalidate the
+cookie:
 
 ```php
 <?php
 class MySignOut
 {
     /**
-     * DASPRiD\Helios\CookieManagerInterface
+     * @var \DASPRiD\Helios\IdentityCookieManager
      */
-    private $cookieManager;
+    private $identityCookieManager;
 
     public function __invoke()
     {
         $response = new Zend\Diactoros\Response\RedirectResponse('/go/somewhere');
-        return $this->cookieManager->expireTokenCookie($response);
+        return $this->identityCookieManager->expireCookie($response);
     }
 }
 ```
@@ -127,11 +130,14 @@ you need the user in your middleware, you can easily get it:
 
 ```php
 <?php
+use DASPRiD\Helios\IdentityMiddleware;
+use Psr\Http\Message\ServerRequestInterface;
+
 class SomeOtherMiddleware
 {
-    public function __invoke(Psr\Http\Message\ServerRequestInterface $request)
+    public function __invoke(ServerRequestInterface $request)
     {
-        $user = $request->getAttribute(DASPRiD\Helios\IdentityMiddleware::IDENTITY_ATTRIBUTE);
+        $user = $request->getAttribute(IdentityMiddleware::IDENTITY_ATTRIBUTE);
     }
 }
 ```

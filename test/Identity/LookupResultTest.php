@@ -1,15 +1,14 @@
 <?php
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace DASPRiD\HeliosTest\Identity;
 
-use Assert\InvalidArgumentException;
 use DASPRiD\Helios\Identity\LookupResult;
-use PHPUnit_Framework_TestCase as TestCase;
+use PHPUnit\Framework\TestCase;
 
 class LookupResultTest extends TestCase
 {
-    public function testValidResult()
+    public function testValidResult() : void
     {
         $result = LookupResult::fromIdentity('foo');
 
@@ -17,12 +16,10 @@ class LookupResultTest extends TestCase
         $this->assertSame('foo', $result->getIdentity());
     }
 
-    public function testInvalidResult()
+    public function testInvalidResult() : void
     {
         $result = LookupResult::invalid();
 
         $this->assertFalse($result->hasIdentity());
-        $this->expectException(InvalidArgumentException::class);
-        $result->getIdentity();
     }
 }

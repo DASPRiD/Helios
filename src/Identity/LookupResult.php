@@ -1,9 +1,7 @@
 <?php
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace DASPRiD\Helios\Identity;
-
-use Assert\Assertion;
 
 final class LookupResult
 {
@@ -25,9 +23,6 @@ final class LookupResult
         return new self(null);
     }
 
-    /**
-     * @param mixed $identity
-     */
     public static function fromIdentity($identity) : self
     {
         return new self($identity);
@@ -38,12 +33,9 @@ final class LookupResult
         return null !== $this->identity;
     }
 
-    /**
-     * @return mixed
-     */
     public function getIdentity()
     {
-        Assertion::notNull($this->identity);
+        assert(null !== $this->identity);
         return $this->identity;
     }
 }

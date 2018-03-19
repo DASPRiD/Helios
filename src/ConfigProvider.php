@@ -1,11 +1,10 @@
 <?php
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace DASPRiD\Helios;
 
-use DASPRiD\Helios\Factory\CookieManagerFactory;
+use DASPRiD\Helios\Factory\IdentityCookieManagerFactory;
 use DASPRiD\Helios\Factory\IdentityMiddlewareFactory;
-use DASPRiD\Helios\Factory\TokenManagerFactory;
 
 final class ConfigProvider
 {
@@ -20,9 +19,8 @@ final class ConfigProvider
     {
         return [
             'factories' => [
-                CookieManagerInterface::class => CookieManagerFactory::class,
+                IdentityCookieManager::class => IdentityCookieManagerFactory::class,
                 IdentityMiddleware::class => IdentityMiddlewareFactory::class,
-                TokenManagerInterface::class => TokenManagerFactory::class,
             ],
         ];
     }

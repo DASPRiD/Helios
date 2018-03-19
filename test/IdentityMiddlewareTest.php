@@ -1,18 +1,18 @@
 <?php
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace DASPRiD\HeliosTest;
 
-use DASPRiD\Helios\CookieManagerInterface;
-use DASPRiD\Helios\CurrentTime\CurrentTimeProviderInterface;
+use CultuurNet\Clock\FrozenClock;
 use DASPRiD\Helios\Identity\IdentityLookupInterface;
 use DASPRiD\Helios\Identity\LookupResult;
+use DASPRiD\Helios\IdentityCookieManager;
 use DASPRiD\Helios\IdentityMiddleware;
-use DASPRiD\Helios\TokenManagerInterface;
+use DASPRiD\Pikkuleipa\Cookie;
+use DASPRiD\Pikkuleipa\CookieManagerInterface;
 use DateTimeImmutable;
-use Lcobucci\JWT\Claim\Basic;
-use Lcobucci\JWT\Token;
-use PHPUnit_Framework_TestCase as TestCase;
+use PHPUnit\Framework\TestCase;
+use Prophecy\Argument;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Zend\Diactoros\Response\EmptyResponse;
@@ -20,17 +20,19 @@ use Zend\Diactoros\ServerRequest;
 
 class IdentityMiddlewareTest extends TestCase
 {
-    public function testInvokeWithoutValidToken()
+    public function testInvokeWithoutValidToken() : void
     {
         $request = new ServerRequest();
         $response = new EmptyResponse();
+        $cookie = new Cookie('helios');
 
         $cookieManager = $this->prophesize(CookieManagerInterface::class);
-        $cookieManager->hasValidToken($request)->willReturn(false);
+        $cookieManager->getCookie($request, 'helios')->willReturn($cookie);
+        $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
 
         $middleware = new IdentityMiddleware(
+            $manager,
             $this->prophesize(IdentityLookupInterface::class)->reveal(),
-            $cookieManager->reveal(),
             30
         );
 
@@ -40,44 +42,23 @@ class IdentityMiddlewareTest extends TestCase
         });
     }
 
-    public function testInvokeWithTokenWithoutSubject()
+    public function testInvokeWithInvalidIdentity() : void
     {
         $request = new ServerRequest();
         $response = new EmptyResponse();
+        $cookie = new Cookie('helios');
+        $cookie->set(IdentityCookieManager::SUBJECT_CLAIM, 'foo');
 
         $cookieManager = $this->prophesize(CookieManagerInterface::class);
-        $cookieManager->hasValidToken($request)->willReturn(true);
-        $cookieManager->getToken($request)->willReturn(new Token());
-
-        $middleware = new IdentityMiddleware(
-            $this->prophesize(IdentityLookupInterface::class)->reveal(),
-            $cookieManager->reveal(),
-            30
-        );
-
-        $middleware($request, $response, function (ServerRequestInterface $request, ResponseInterface $response) {
-            $this->assertNull($request->getAttribute(IdentityMiddleware::IDENTITY_ATTRIBUTE));
-            return $response;
-        });
-    }
-
-    public function testInvokeWithInvalidIdentity()
-    {
-        $request = new ServerRequest();
-        $response = new EmptyResponse();
+        $cookieManager->getCookie($request, 'helios')->willReturn($cookie);
+        $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
 
         $identityLookup = $this->prophesize(IdentityLookupInterface::class);
         $identityLookup->lookup('foo')->willReturn(LookupResult::invalid());
 
-        $cookieManager = $this->prophesize(CookieManagerInterface::class);
-        $cookieManager->hasValidToken($request)->willReturn(true);
-        $cookieManager->getToken($request)->willReturn(new Token([], [
-            TokenManagerInterface::SUBJECT_CLAIM => new Basic(TokenManagerInterface::SUBJECT_CLAIM, 'foo'),
-        ]));
-
         $middleware = new IdentityMiddleware(
+            $manager,
             $identityLookup->reveal(),
-            $cookieManager->reveal(),
             30
         );
 
@@ -87,23 +68,23 @@ class IdentityMiddlewareTest extends TestCase
         });
     }
 
-    public function testInvokeWithValidIdentity()
+    public function testInvokeWithValidIdentity() : void
     {
         $request = new ServerRequest();
         $response = new EmptyResponse();
+        $cookie = new Cookie('helios');
+        $cookie->set(IdentityCookieManager::SUBJECT_CLAIM, 'foo');
+
+        $cookieManager = $this->prophesize(CookieManagerInterface::class);
+        $cookieManager->getCookie($request, 'helios')->willReturn($cookie);
+        $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
 
         $identityLookup = $this->prophesize(IdentityLookupInterface::class);
         $identityLookup->lookup('foo')->willReturn(LookupResult::fromIdentity('bar'));
 
-        $cookieManager = $this->prophesize(CookieManagerInterface::class);
-        $cookieManager->hasValidToken($request)->willReturn(true);
-        $cookieManager->getToken($request)->willReturn(new Token([], [
-            TokenManagerInterface::SUBJECT_CLAIM => new Basic(TokenManagerInterface::SUBJECT_CLAIM, 'foo'),
-        ]));
-
         $middleware = new IdentityMiddleware(
+            $manager,
             $identityLookup->reveal(),
-            $cookieManager->reveal(),
             30
         );
 
@@ -113,95 +94,67 @@ class IdentityMiddlewareTest extends TestCase
         });
     }
 
-    public function refreshClaimProvider() : array
+    public static function refreshProvider() : array
     {
         return [
-            'no-refresh-without-end-of-session-claim' => [
-                [],
+            'no-refresh-with-early-datetime' => [
+                new DateTimeImmutable('2018-01-01 12:00:29 UTC'),
                 false,
-            ],
-            'no-refresh-with-true-end-of-session-claim' => [
-                [
-                    TokenManagerInterface::END_AT_SESSION_CLAIM => new Basic(
-                        TokenManagerInterface::END_AT_SESSION_CLAIM,
-                        true
-                    ),
-                ],
                 false
             ],
-            'no-refresh-without-issued-at-claim' => [
-                [
-                    TokenManagerInterface::END_AT_SESSION_CLAIM => new Basic(
-                        TokenManagerInterface::END_AT_SESSION_CLAIM,
-                        false
-                    ),
-                ],
-                false
-            ],
-            'no-refresh-with-early-issued-at-claim' => [
-                [
-                    TokenManagerInterface::END_AT_SESSION_CLAIM => new Basic(
-                        TokenManagerInterface::END_AT_SESSION_CLAIM,
-                        false
-                    ),
-                    TokenManagerInterface::ISSUED_AT_CLAIM => new Basic(
-                        TokenManagerInterface::ISSUED_AT_CLAIM,
-                        71
-                    ),
-                ],
-                false
-            ],
-            'refresh-with-old-issued-at-claim' => [
-                [
-                    TokenManagerInterface::END_AT_SESSION_CLAIM => new Basic(
-                        TokenManagerInterface::END_AT_SESSION_CLAIM,
-                        false
-                    ),
-                    TokenManagerInterface::ISSUED_AT_CLAIM => new Basic(
-                        TokenManagerInterface::ISSUED_AT_CLAIM,
-                        70
-                    ),
-                ],
+            'refresh-with-late-datetime' => [
+                new DateTimeImmutable('2018-01-01 12:00:30 UTC'),
+                false,
                 true
+            ],
+            'no-refresh-with-ends-at-session' => [
+                new DateTimeImmutable('2018-01-01 12:00:30 UTC'),
+                true,
+                false
             ],
         ];
     }
 
     /**
-     * @dataProvider refreshClaimProvider
+     * @dataProvider refreshProvider
      */
-    public function testRefresh(array $claims, bool $expectRefresh)
+    public function testRefresh(DateTimeImmutable $currentTime, bool $endsAtSession, bool $shouldRefresh) : void
     {
         $request = new ServerRequest();
         $response = new EmptyResponse();
+        $expectedResponse = $response;
+        $refreshResponse = new EmptyResponse();
+
+        if ($shouldRefresh) {
+            $expectedResponse = $refreshResponse;
+        }
+
+        $cookie = new Cookie('helios', $endsAtSession, new DateTimeImmutable('2018-01-01 12:00:00 UTC'));
+        $cookie->set(IdentityCookieManager::SUBJECT_CLAIM, 'foo');
+
+        $cookieManager = $this->prophesize(CookieManagerInterface::class);
+        $cookieManager->getCookie($request, 'helios')->willReturn($cookie);
+        $cookieManager->setCookie($response, Argument::that(function (Cookie $cookie) : bool {
+            return 'foo' === $cookie->get(IdentityCookieManager::SUBJECT_CLAIM);
+        }))->willReturn($refreshResponse);
+        $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
 
         $identityLookup = $this->prophesize(IdentityLookupInterface::class);
         $identityLookup->lookup('foo')->willReturn(LookupResult::fromIdentity('bar'));
 
-        $cookieManager = $this->prophesize(CookieManagerInterface::class);
-        $cookieManager->hasValidToken($request)->willReturn(true);
-        $cookieManager->getToken($request)->willReturn(new Token([], [
-            TokenManagerInterface::SUBJECT_CLAIM => new Basic(TokenManagerInterface::SUBJECT_CLAIM, 'foo'),
-        ] + $claims));
-
-        if ($expectRefresh) {
-            $cookieManager->injectTokenCookie($response, 'foo', false, false)->shouldBeCalled();
-        } else {
-            $cookieManager->injectTokenCookie()->shouldNotBeCalled();
-        }
-
-        $currentTimeProvider = $this->prophesize(CurrentTimeProviderInterface::class);
-        $currentTimeProvider->getCurrentTime()->willReturn(new DateTimeImmutable('@100'));
-
         $middleware = new IdentityMiddleware(
+            $manager,
             $identityLookup->reveal(),
-            $cookieManager->reveal(),
             30,
-            $currentTimeProvider->reveal()
+            new FrozenClock($currentTime)
         );
 
-        $middleware($request, $response, function (ServerRequestInterface $request, ResponseInterface $response) {
-            return $response;
-        });
+        $this->assertSame(
+            $expectedResponse,
+            $middleware($request, $response, function (ServerRequestInterface $request, ResponseInterface $response) {
+                $this->assertSame('bar', $request->getAttribute(IdentityMiddleware::IDENTITY_ATTRIBUTE));
+                return $response;
+            })
+        );
     }
 }

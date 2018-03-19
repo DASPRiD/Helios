@@ -1,18 +1,24 @@
 <?php
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace DASPRiD\Helios;
 
-use DASPRiD\Helios\CurrentTime\CurrentTimeProviderInterface;
-use DASPRiD\Helios\CurrentTime\SystemTimeProvider;
+use CultuurNet\Clock\Clock;
+use CultuurNet\Clock\SystemClock;
 use DASPRiD\Helios\Identity\IdentityLookupInterface;
-use Lcobucci\JWT\Token;
+use DASPRiD\Pikkuleipa\Cookie;
+use DateTimeZone;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 final class IdentityMiddleware
 {
-    const IDENTITY_ATTRIBUTE = 'helios-identity';
+    public const IDENTITY_ATTRIBUTE = 'helios-identity';
+
+    /**
+     * @var IdentityCookieManager
+     */
+    private $identityCookieManager;
 
     /**
      * @var IdentityLookupInterface
@@ -20,30 +26,25 @@ final class IdentityMiddleware
     private $identityLookup;
 
     /**
-     * @var CookieManagerInterface
-     */
-    private $cookieManager;
-
-    /**
      * @var int
      */
     private $refreshTime;
 
     /**
-     * @var CurrentTimeProviderInterface
+     * @var Clock
      */
-    private $currentTimeProvider;
+    private $clock;
 
     public function __construct(
+        IdentityCookieManager $identityCookieManager,
         IdentityLookupInterface $identityLookup,
-        CookieManagerInterface $cookieManager,
         int $refreshTime,
-        CurrentTimeProviderInterface $currentTimeProvider = null
+        ?Clock $clock = null
     ) {
+        $this->identityCookieManager = $identityCookieManager;
         $this->identityLookup = $identityLookup;
-        $this->cookieManager = $cookieManager;
         $this->refreshTime = $refreshTime;
-        $this->currentTimeProvider = $currentTimeProvider ?: new SystemTimeProvider();
+        $this->clock = $clock ?: new SystemClock(new DateTimeZone('utc'));
     }
 
     public function __invoke(
@@ -51,51 +52,36 @@ final class IdentityMiddleware
         ResponseInterface $response,
         callable $next
     ) : ResponseInterface {
-        if (!$this->cookieManager->hasValidToken($request)) {
+        $cookie = $this->identityCookieManager->getCookie($request);
+        $subject = $cookie->get(IdentityCookieManager::SUBJECT_CLAIM);
+
+        if (null === $subject) {
             return $next($request, $response);
         }
 
-        $token = $this->cookieManager->getToken($request);
-
-        if (!$token->hasClaim(TokenManager::SUBJECT_CLAIM)) {
-            return $next($request, $response);
-        }
-
-        $subject = $token->getClaim(TokenManager::SUBJECT_CLAIM);
         $result = $this->identityLookup->lookup($subject);
 
-        if (!$result->hasIdentity()) {
+        if (! $result->hasIdentity()) {
             return $next($request, $response);
         }
 
         $nextResponse = $next($request->withAttribute(self::IDENTITY_ATTRIBUTE, $result->getIdentity()), $response);
 
-        if (!$this->shouldTokenBeRefreshed($token)) {
+        if (! $this->shouldCookieBeRefreshed($cookie)) {
             return $nextResponse;
         }
 
-        return $this->cookieManager->injectTokenCookie(
-            $nextResponse,
-            $subject,
-            false,
-            false
-        );
+        return $this->identityCookieManager->injectCookie($nextResponse, $subject);
     }
 
-    private function shouldTokenBeRefreshed(Token $token) : bool
+    private function shouldCookieBeRefreshed(Cookie $cookie) : bool
     {
-        if ($token->hasClaim(TokenManager::END_AT_SESSION_CLAIM)
-            && $token->getClaim(TokenManager::END_AT_SESSION_CLAIM)
-        ) {
+        if ($cookie->endsWithSession()) {
             return false;
         }
 
-        if (!$token->hasClaim(TokenManager::ISSUED_AT_CLAIM)) {
-            return false;
-        }
-
-        return $this->currentTimeProvider->getCurrentTime()->getTimestamp() >= (
-            $token->getClaim(TokenManager::ISSUED_AT_CLAIM) + $this->refreshTime
+        return $this->clock->getDateTime()->getTimestamp() >= (
+            $cookie->getIssuedAt()->getTimestamp() + $this->refreshTime
         );
     }
 }
