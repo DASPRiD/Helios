@@ -21,6 +21,10 @@ $ composer require dasprid/helios
 
 ## Getting started (for [Expressive](https://github.com/zendframework/zend-expressive))
 
+### JWT cookies
+
+This library uses Pikkuleipa, a cookie manager utilizing JSON Web Tokens. In order to start working with Helios, you need to [configure Pikkuleipa first](https://github.com/DASPRiD/Pikkuleipa).
+
 ### Import the factory config
 
 Create a file named `helios.global.php` or similar in your autoloading config directory:
@@ -57,6 +61,17 @@ class MyIdentityLookup implements IdentityLookupInterface
         return LookupResult::invalid();
     }
 }
+```
+
+Then wire your implementation to Helios by updating configuration file:
+```php
+<?php
+return [
+    'helios' => [
+        // ...
+        'identity_lookup_id' => MyIdentityLookup::class,
+    ],
+];
 ```
 
 ### Configure Helios
