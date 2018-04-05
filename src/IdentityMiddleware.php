@@ -70,7 +70,7 @@ final class IdentityMiddleware implements MiddlewareInterface
             return $nextResponse;
         }
 
-        return $this->identityCookieManager->injectCookie($nextResponse, $subject);
+        return $this->identityCookieManager->injectCookie($nextResponse, $subject, false, false);
     }
 
     private function shouldCookieBeRefreshed(Cookie $cookie) : bool

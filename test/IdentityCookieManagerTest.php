@@ -36,7 +36,7 @@ class IdentityCookieManagerTest extends TestCase
                 'foo' === $cookie->get(IdentityCookieManager::SUBJECT_CLAIM) &&
                 ! $cookie->endsWithSession()
             );
-        }))->willReturn($expectedResponse);
+        }), true)->willReturn($expectedResponse);
 
         $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
         $this->assertSame(
@@ -56,7 +56,7 @@ class IdentityCookieManagerTest extends TestCase
                 'foo' === $cookie->get(IdentityCookieManager::SUBJECT_CLAIM) &&
                 $cookie->endsWithSession()
             );
-        }))->willReturn($expectedResponse);
+        }), true)->willReturn($expectedResponse);
 
         $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
         $this->assertSame(
@@ -65,6 +65,22 @@ class IdentityCookieManagerTest extends TestCase
         );
     }
 
+    public function testExpireCookieIsNotOverwrittenWhenEnabled() : void
+    {
+        $response = new EmptyResponse();
+        $expectedResponse = new EmptyResponse();
+
+        $cookieManager = $this->prophesize(CookieManagerInterface::class);
+        $cookieManager->expireCookieByName($response, 'helios')->willReturn($expectedResponse);
+        $cookieManager->setCookie($expectedResponse, Argument::type(Cookie::class), false)
+            ->willReturn($expectedResponse);
+
+        $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
+        $this->assertSame(
+            $expectedResponse,
+            $manager->injectCookie($manager->expireCookie($response), 'foo', false, false)
+        );
+    }
 
     public function testExpireCookie() : void
     {

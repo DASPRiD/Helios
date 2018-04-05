@@ -13,10 +13,8 @@ use DASPRiD\Pikkuleipa\CookieManagerInterface;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Prophecy\Argument;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Zend\Diactoros\Response;
 use Zend\Diactoros\Response\EmptyResponse;
 use Zend\Diactoros\ServerRequest;
 
@@ -156,7 +154,7 @@ class IdentityMiddlewareTest extends TestCase
         $cookieManager->getCookie($request, 'helios')->willReturn($cookie);
         $cookieManager->setCookie($handlerResponse, Argument::that(function (Cookie $cookie) : bool {
             return 'foo' === $cookie->get(IdentityCookieManager::SUBJECT_CLAIM);
-        }))->willReturn($refreshResponse);
+        }), false)->willReturn($refreshResponse);
         $manager = new IdentityCookieManager($cookieManager->reveal(), 'helios');
 
         $identityLookup = $this->prophesize(IdentityLookupInterface::class);

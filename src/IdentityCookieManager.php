@@ -33,12 +33,16 @@ final class IdentityCookieManager
         return $this->cookieManager->getCookie($request, $this->cookieName);
     }
 
-    public function injectCookie(ResponseInterface $response, $subject, bool $endsAtSession = false) : ResponseInterface
-    {
+    public function injectCookie(
+        ResponseInterface $response,
+        $subject,
+        bool $endsAtSession = false,
+        bool $overwriteExpireCookie = true
+    ) : ResponseInterface {
         $cookie = new Cookie($this->cookieName, $endsAtSession);
         $cookie->set(self::SUBJECT_CLAIM, $subject);
 
-        return $this->cookieManager->setCookie($response, $cookie);
+        return $this->cookieManager->setCookie($response, $cookie, $overwriteExpireCookie);
     }
 
     public function expireCookie(ResponseInterface $response) : ResponseInterface
